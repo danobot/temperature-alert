@@ -1,8 +1,8 @@
-# Temperature Difference Reminder
-# Alerts you when its cooler outside and its time to open doors and windows for fresh air!
+# Temperature Difference Alert
+# Alerts you when it's cooler outside and its time to open doors and windows for fresh air!
 # (Useful in hot climates)
 #
-# Documentation:    https://github.com/danobot/temp_alert
+# Documentation:    https://github.com/danobot/temperature-alert
 # Version:          v0.1.0
 
 import datetime
@@ -13,6 +13,7 @@ from homeassistant.core import callback, ServiceCall
 from homeassistant.components.notify import (
     ATTR_MESSAGE, DOMAIN as DOMAIN_NOTIFY)
 
+VERSION = '0.1.0'
 DOMAIN = 'temperature_alert'
 devices = []
 
