@@ -15,7 +15,7 @@ from homeassistant.core import callback, ServiceCall
 from homeassistant.components.notify import (
     ATTR_MESSAGE, DOMAIN as DOMAIN_NOTIFY)
 
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 DOMAIN = 'temperature_alert'
 devices = []
 
