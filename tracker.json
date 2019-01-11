@@ -1,6 +1,6 @@
 {
     "temperature_alert": {
-      "version": "0.2.0",
+      "version": "0.2.1",
       "local_location": "custom_components/temperature_alert.py",
       "remote_location": "https://raw.githubusercontent.com/danobot/temperature-alert/master/temperature_alert.py",
       "visit_repo": "https://github.com/danobot/temperature-alert",
