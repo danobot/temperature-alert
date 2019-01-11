@@ -11,12 +11,17 @@ temperature_alert:
       - sensor.kitchen_temp
       - sensor.office_temp
     outdoor_sensor: sensor.bom_air_temp_c
-    temp_delta: 2
+    temp_delta: 2                           # min delta before triggering
     notifiers: 
       - 'notify.telegram'
+    mode: cooler                            # cooler/warmer
 ```
 
+# Binary Sensor
+An entity under `binary_sensor` will be created which can be used in automations. 
 
+* It's state will be `cooler` if indoor temps are cooler than outdoor temps.
+* It's state will be `warmer` if indoor temps are warmer than outdoor temps.
 
 
 # Automatic updates
