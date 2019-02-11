@@ -1,3 +1,4 @@
 v0.1.0      First Release
 v0.2.0      Make binary_sensor entity, add name attribute, state attributes
 v0.2.1      Fix state attribute text
+v0.2.2      Fix: ignore ValueErrors when component/HA is still setting up the state machine or no sensor values are available at startup

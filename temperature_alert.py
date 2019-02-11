@@ -3,7 +3,7 @@
 # (Useful in hot climates)
 #
 # Documentation:    https://github.com/danobot/temperature-alert
-# Version:          v0.2.1
+# Version:          v0.2.2
 
 from datetime import datetime
 import logging
@@ -16,7 +16,7 @@ from homeassistant.core import callback, ServiceCall
 from homeassistant.components.notify import (
     ATTR_MESSAGE, DOMAIN as DOMAIN_NOTIFY)
 from homeassistant.components.binary_sensor import BinarySensorDevice
-VERSION = '0.2.1'
+VERSION = '0.2.2'
 DOMAIN = 'temperature_alert'
 devices = []
 
@@ -117,54 +117,56 @@ class TempChecker(BinarySensorDevice):
         logger.debug("State Changes")
         logger.debug("State Old" + entity)
         logger.debug("State New" + str(new))
+        try:
 
-        if float(new.state) > self.threshold:
-            self.thresholdExceeded = True
+            if float(new.state) > self.threshold:
+                self.thresholdExceeded = True
 
 
+            temps = []
+            logger.debug("Indoor sensor: " +str(self.indoorSensors ))
+            for sensor in self.indoorSensors:
+                logger.debug("Checking: " + sensor)
+                i =  self.hass.states.get(sensor).state
+                logger.debug("Val: " +str( i))
+                temps.append(float(i))
 
-        temps = []
-        logger.debug("Indoor sensor: " +str(self.indoorSensors ))
-        for sensor in self.indoorSensors:
-            logger.debug("Checking: " + sensor)
-            i =  self.hass.states.get(sensor).state
-            logger.debug("Val: " +str( i))
-            temps.append(float(i))
-
-            logger.debug("Indoor sensor: " +str(temps ))
-            delta = min(temps) - float(new.state)
-            logger.debug("Delta:" + str(delta))
-        self.last_delta = delta
-        if delta > 0:
-            
-            if delta >= self.temp_delta:
-                message = "Outdoor temp {} is lower than coolest indoor temp {}".format(new.state, str(min(temps)))
-                logger.info(message)
-                self._state = STATE_WARMER
-                # logger.info(str(hass.services))
-                if not self.notificationSent:
-
-                    for target in self._notifiers:
-                        domain, service = target.split('.')
-                        logger.debug("Does service {} exist? {}".format(service, self.hass.services.has_service(DOMAIN_NOTIFY,service)))
-                        self.hass.async_create_task(
-                            self.hass.services.async_call(
-                                DOMAIN_NOTIFY, service, {ATTR_MESSAGE: message}
-                            )
-                        )
-                    self.hass.bus.fire('temp_alert', {
-                        'delta': delta
-                    })
-
-                    self._flipped_over = datetime.now()
-                    self.notificationSent = True
-
-            else:
-                logger.info("Outdoor {} is cooler than indoor {}, but only by {} degrees, not {} (threshold)".format(new.state, min(temps),delta, self.temp_delta))
+                logger.debug("Indoor sensor: " +str(temps ))
+                delta = min(temps) - float(new.state)
+                logger.debug("Delta:" + str(delta))
+            self.last_delta = delta
+            if delta > 0:
                 
-        else:
-            logger.info("Indoor is cooler.")
-            self.notificationSent = False # Send a new notification (This resets the cycle)
-            self._state = STATE_COOLER
-            self._flipped_over = datetime.now()
-        self.update()
+                if delta >= self.temp_delta:
+                    message = "Outdoor temp {} is lower than coolest indoor temp {}".format(new.state, str(min(temps)))
+                    logger.info(message)
+                    self._state = STATE_WARMER
+                    # logger.info(str(hass.services))
+                    if not self.notificationSent:
+
+                        for target in self._notifiers:
+                            domain, service = target.split('.')
+                            logger.debug("Does service {} exist? {}".format(service, self.hass.services.has_service(DOMAIN_NOTIFY,service)))
+                            self.hass.async_create_task(
+                                self.hass.services.async_call(
+                                    DOMAIN_NOTIFY, service, {ATTR_MESSAGE: message}
+                                )
+                            )
+                        self.hass.bus.fire('temp_alert', {
+                            'delta': delta
+                        })
+
+                        self._flipped_over = datetime.now()
+                        self.notificationSent = True
+
+                else:
+                    logger.info("Outdoor {} is cooler than indoor {}, but only by {} degrees, not {} (threshold)".format(new.state, min(temps),delta, self.temp_delta))
+                    
+            else:
+                logger.info("Indoor is cooler.")
+                self.notificationSent = False # Send a new notification (This resets the cycle)
+                self._state = STATE_COOLER
+                self._flipped_over = datetime.now()
+            self.update()
+        except ValueError as e:
+            logger.debug("It is not ready yet.")
