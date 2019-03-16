@@ -3,7 +3,7 @@
 # (Useful in hot climates)
 #
 # Documentation:    https://github.com/danobot/temperature-alert
-# Version:          v0.2.2
+# Version:          v0.2.3
 
 from datetime import datetime
 import logging
@@ -16,7 +16,7 @@ from homeassistant.core import callback, ServiceCall
 from homeassistant.components.notify import (
     ATTR_MESSAGE, DOMAIN as DOMAIN_NOTIFY)
 from homeassistant.components.binary_sensor import BinarySensorDevice
-VERSION = '0.2.2'
+VERSION = '0.2.3'
 DOMAIN = 'temperature_alert'
 devices = []
 
@@ -138,7 +138,7 @@ class TempChecker(BinarySensorDevice):
             if delta > 0:
                 
                 if delta >= self.temp_delta:
-                    message = "Outdoor temp {} is lower than coolest indoor temp {}".format(new.state, str(min(temps)))
+                    message = "Outdoor temp is {}. This is lower than coolest indoor temp {}".format(new.state, str(min(temps)))
                     logger.info(message)
                     self._state = STATE_WARMER
                     # logger.info(str(hass.services))
@@ -160,7 +160,7 @@ class TempChecker(BinarySensorDevice):
                         self.notificationSent = True
 
                 else:
-                    logger.info("Outdoor {} is cooler than indoor {}, but only by {} degrees, not {} (threshold)".format(new.state, min(temps),delta, self.temp_delta))
+                    logger.info("Outdoor temp is {}. This is cooler than indoor {}, but only by {} degrees, not {} (threshold)".format(new.state, min(temps),delta, self.temp_delta))
                     
             else:
                 logger.info("Indoor is cooler.")
