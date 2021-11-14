@@ -1,0 +1,11 @@
+{
+  "domain": "temperature_alert",
+  "name": "Temperature Alert",
+  "codeowners": ["@danobot"],
+  "requirements": [],
+  "version": "1.0.0",
+  "homeassistant": "2021.11.3",
+  "dependencies": [
+    "sensor"
+  ]
+}
