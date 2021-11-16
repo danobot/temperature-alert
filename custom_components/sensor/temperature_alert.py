@@ -3,7 +3,7 @@
 # (Useful in hot climates)
 #
 # Documentation:    https://github.com/danobot/temperature-alert
-# Version:          v0.2.3
+# Version:          v0.2.4
 
 from datetime import datetime
 import logging
@@ -15,7 +15,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.core import callback, ServiceCall
 from homeassistant.components.notify import (
     ATTR_MESSAGE, DOMAIN as DOMAIN_NOTIFY)
-from homeassistant.components.binary_sensor import BinarySensorDevice
+from homeassistant.components.binary_sensor import BinarySensorEntity
 VERSION = '0.2.3'
 DOMAIN = 'temperature_alert'
 devices = []
@@ -50,7 +50,7 @@ CONF_THRESHOLD = 'threshold'
 # }, extra=vol.ALLOW_EXTRA)
 STATE_COOLER = 'cooler'
 STATE_WARMER = 'warmer'
-class TempChecker(BinarySensorDevice):
+class TempChecker(BinarySensorEntity):
 
 
     def __init__(self, hass, config):
@@ -69,7 +69,10 @@ class TempChecker(BinarySensorDevice):
         self.notificationSent = False
         self._may_update = False
         self._flipped_over = None
-        
+        self.minTemp = None
+        self.maxTemp = None
+        self.last_delta_max = 0
+        self.last_delta_min = 0
         event.async_track_state_change(hass,self.outdoorSensor, self.change)
     @property
     def state(self):
@@ -89,11 +92,16 @@ class TempChecker(BinarySensorDevice):
             return self.att('It is nice and cool inside.')
         if self._state == STATE_WARMER:
             return self.att('It is cooler outside.')
+
     def att(self, state):
         return {
                 'state': state,
                 'delta': self.last_delta,
-                'last_change': self._flipped_over
+                'delta_min': self.last_delta_min,
+                'delta_max': self.last_delta_max,
+                'last_change': self._flipped_over,
+                'min': self.minTemp,
+                'max': self.maxTemp
             }
     @property
     def icon(self):
@@ -129,18 +137,22 @@ class TempChecker(BinarySensorDevice):
                 logger.debug("Checking: " + sensor)
                 i =  self.hass.states.get(sensor).state
                 logger.debug("Val: " +str( i))
-                temps.append(float(i))
+                if i:
+                    temps.append(float(i))
 
-                logger.debug("Indoor sensor: " +str(temps ))
-                delta = min(temps) - float(new.state)
-                logger.debug("Delta:" + str(delta))
-            self.last_delta = delta
-            if delta > 0:
-                
-                if delta >= self.temp_delta:
+                logger.debug("Indoor sensor: " +str(temps))
+            self.minTemp = round(min(temps), 1)
+            self.maxTemp = round(max(temps), 1)
+            self.last_delta_min = round(self.minTemp - float(new.state), 1)
+            self.last_delta = round(self.last_delta_min, 1)
+            self.last_delta_max = round(self.maxTemp - float(new.state), 1)
+            logger.debug("Delta:" + str(self.last_delta))
+            if self.last_delta > 0:
+
+                if self.last_delta >= self.temp_delta:
                     message = "Outdoor temp is {}. This is lower than coolest indoor temp {}".format(new.state, str(min(temps)))
                     logger.info(message)
-                    self._state = STATE_WARMER
+                    self._state = STATE_COOLER
                     # logger.info(str(hass.services))
                     if not self.notificationSent:
 
@@ -153,19 +165,23 @@ class TempChecker(BinarySensorDevice):
                                 )
                             )
                         self.hass.bus.fire('temp_alert', {
-                            'delta': delta
+                            'delta': self.last_delta,
+                            'delta_min': self.last_delta_min,
+                            'delta_max': self.last_delta_max,
+                            'last_change': self._flipped_over,
+                            'min': self.minTemp,
+                            'max': self.maxTemp
                         })
 
                         self._flipped_over = datetime.now()
                         self.notificationSent = True
 
                 else:
-                    logger.info("Outdoor temp is {}. This is cooler than indoor {}, but only by {} degrees, not {} (threshold)".format(new.state, min(temps),delta, self.temp_delta))
-                    
+                    logger.info("Outdoor temp is {}. This is cooler than indoor {}, but only by {} degrees, not {} (threshold)".format(new.state, min(temps), self.last_delta, self.temp_delta))
             else:
                 logger.info("Indoor is cooler.")
                 self.notificationSent = False # Send a new notification (This resets the cycle)
-                self._state = STATE_COOLER
+                self._state = STATE_WARMER
                 self._flipped_over = datetime.now()
             self.update()
         except ValueError as e:
