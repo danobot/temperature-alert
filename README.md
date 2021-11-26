@@ -25,12 +25,5 @@ An entity under `binary_sensor` will be created which can be used in automations
 
 
 # Automatic updates
-Use the `custom_updater` component to track updates.
-
-```yaml
-custom_updater:
-  track:
-    - components
-  component_urls:
-    - https://raw.githubusercontent.com/danobot/temperature-alert/master/tracker.json
+Install using HACS
 ```
