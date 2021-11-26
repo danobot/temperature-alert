@@ -26,4 +26,3 @@ An entity under `binary_sensor` will be created which can be used in automations
 
 # Automatic updates
 Install using HACS
-```
