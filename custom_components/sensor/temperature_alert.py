@@ -3,7 +3,7 @@
 # (Useful in hot climates)
 #
 # Documentation:    https://github.com/danobot/temperature-alert
-# Version:          v0.2.4
+# Version:          v0.3.0
 
 from datetime import datetime
 import logging
@@ -15,7 +15,11 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.core import callback, ServiceCall
 from homeassistant.components.notify import (
     ATTR_MESSAGE, DOMAIN as DOMAIN_NOTIFY)
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import (
+    DEVICE_CLASS_COLD,
+    BinarySensorEntity
+);
+
 VERSION = '0.2.3'
 DOMAIN = 'temperature_alert'
 devices = []
@@ -48,8 +52,8 @@ CONF_THRESHOLD = 'threshold'
 #         vol.Required(CONF_NOTIFIERS): cv.entity_ids,
 #     })
 # }, extra=vol.ALLOW_EXTRA)
-STATE_COOLER = 'cooler'
-STATE_WARMER = 'warmer'
+STATE_ON = 'cooler'
+STATE_OFF = 'warmer'
 class TempChecker(BinarySensorEntity):
 
 
@@ -64,7 +68,7 @@ class TempChecker(BinarySensorEntity):
         logger.info("Indoor sensor: " +str(self.indoorSensors ))
         self.temp_delta = config.get('temp_delta', None)
         self.threshold = config.get('threshold', 25)
-        self.default_state = config.get('mode', STATE_COOLER)
+        self.default_state = config.get('mode', STATE_ON)
         self._notifiers = config.get('notifiers')
         self.notificationSent = False
         self._may_update = False
@@ -74,9 +78,9 @@ class TempChecker(BinarySensorEntity):
         self.last_delta_max = 0
         self.last_delta_min = 0
         event.async_track_state_change(hass,self.outdoorSensor, self.change)
-    @property
-    def state(self):
-        return self._state
+    # @property
+    # def state(self):
+    #     return self._state
     @property
     def name(self):
         """Return the state of the entity."""
@@ -85,12 +89,15 @@ class TempChecker(BinarySensorEntity):
     def is_on(self):
         """Return true if the binary sensor is on."""
         return self._state == self.mode
-
+    @property
+    def should_poll(self):
+        """Return True if entity has to be polled for state."""
+        return False
     @property
     def state_attributes(self):
-        if self._state == STATE_COOLER:
+        if self._state == STATE_ON:
             return self.att('It is nice and cool inside.')
-        if self._state == STATE_WARMER:
+        if self._state == STATE_OFF:
             return self.att('It is cooler outside.')
 
     def att(self, state):
@@ -106,9 +113,9 @@ class TempChecker(BinarySensorEntity):
     @property
     def icon(self):
         """Return the entity icon."""
-        if self._state == STATE_COOLER:
+        if self._state == STATE_ON:
             return 'mdi:snowflake'
-        if self._state == STATE_WARMER:
+        if self._state == STATE_OFF:
             return 'mdi:thermometer'
         return 'mdi:circle-outline'
 
@@ -123,36 +130,33 @@ class TempChecker(BinarySensorEntity):
 
     def change(self, entity, old, new):
         logger.debug("State Changes")
-        logger.debug("State Old" + entity)
+        logger.debug("State " + entity)
         logger.debug("State New" + str(new))
         try:
 
-            if float(new.state) > self.threshold:
-                self.thresholdExceeded = True
-
-
             temps = []
-            logger.debug("Indoor sensor: " +str(self.indoorSensors ))
+            logger.debug("Indoor sensors: " +str(self.indoorSensors ))
             for sensor in self.indoorSensors:
-                logger.debug("Checking: " + sensor)
-                i =  self.hass.states.get(sensor).state
-                logger.debug("Val: " +str( i))
+                i = self.hass.states.get(sensor).state
                 if i:
                     temps.append(float(i))
 
-                logger.debug("Indoor sensor: " +str(temps))
+            logger.debug("Indoor sensor temps: " + str(temps))
+
             self.minTemp = round(min(temps), 1)
             self.maxTemp = round(max(temps), 1)
+
             self.last_delta_min = round(self.minTemp - float(new.state), 1)
             self.last_delta = round(self.last_delta_min, 1)
             self.last_delta_max = round(self.maxTemp - float(new.state), 1)
+
             logger.debug("Delta:" + str(self.last_delta))
             if self.last_delta > 0:
 
                 if self.last_delta >= self.temp_delta:
                     message = "Outdoor temp is {}. This is lower than coolest indoor temp {}".format(new.state, str(min(temps)))
                     logger.info(message)
-                    self._state = STATE_COOLER
+                    self._state = STATE_ON
                     # logger.info(str(hass.services))
                     if not self.notificationSent:
 
@@ -165,7 +169,7 @@ class TempChecker(BinarySensorEntity):
                                 )
                             )
                         self.hass.bus.fire('temp_alert', {
-                            'delta': self.last_delta,
+                            'delta': round(self.last_delta,1),
                             'delta_min': self.last_delta_min,
                             'delta_max': self.last_delta_max,
                             'last_change': self._flipped_over,
@@ -180,9 +184,15 @@ class TempChecker(BinarySensorEntity):
                     logger.info("Outdoor temp is {}. This is cooler than indoor {}, but only by {} degrees, not {} (threshold)".format(new.state, min(temps), self.last_delta, self.temp_delta))
             else:
                 logger.info("Indoor is cooler.")
+                if (self.notificationSent):
+                    self._flipped_over = datetime.now()
+
                 self.notificationSent = False # Send a new notification (This resets the cycle)
-                self._state = STATE_WARMER
-                self._flipped_over = datetime.now()
+                self._state = STATE_OFF
             self.update()
         except ValueError as e:
             logger.debug("It is not ready yet.")
+    @property
+    def device_class(self):
+        """Return the class of this device, from component DEVICE_CLASSES."""
+        return DEVICE_CLASS_COLD
