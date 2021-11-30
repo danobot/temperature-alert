@@ -3,7 +3,7 @@
 # (Useful in hot climates)
 #
 # Documentation:    https://github.com/danobot/temperature-alert
-# Version:          v0.3.0
+# Version:          v1.3.0
 
 from datetime import datetime
 import logging
@@ -20,7 +20,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity
 );
 
-VERSION = '0.2.3'
+VERSION = '1.3.0'
 DOMAIN = 'temperature_alert'
 devices = []
 
